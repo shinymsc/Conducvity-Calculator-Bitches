@@ -1,0 +1,189 @@
+rm(list = ls())
+library(devtools)
+install_github('shiny', 'rstudio')
+shape_select <-c("Cone","Sphere","Prism")
+#shape_select[1] <-how to select from this list
+
+#Take 1,2, or 3 from shape_select and then assign it a number value
+#shape_select[1]...etc  
+if (interactive()){
+ui <- fluidPage(pageWithSidebar(
+  headerPanel('Conducvity Calculator!'),
+  sidebarPanel(
+    fileInput("GimmeCSV",'Fileinput',accept=c('text/csv','text/comma-separated-values,text/plain','.csv',Header = TRUE,sep =",")
+              ),
+    tags$hr(),
+   
+
+    fluidRow(column(4, verbatimTextOutput("contents"))),
+    selectInput('Shape', 'Shape', shape_select),
+    
+    numericInput("horzlength","horzlength",0, min = 1, max = 750),
+    verbatimTextOutput("value"),   
+   
+    conditionalPanel(
+      condition = "input.Shape == 'Sphere'",
+      numericInput("horzlength","horzlength",0, min = 1, max = 750),
+    ),
+    
+    
+    #Assuming Size is going to the variable of choice here that will be modified
+    # in the serve segment
+    numericInput("vertlength","vertlength",0, min = 1, max = 1000),
+    
+    numericInput("widlength","widlength",0,min = 1, max = 1000),
+    
+    downloadButton('downloadData','Download')),
+     
+  
+  mainPanel(
+    
+    
+    tableOutput(outputId = 'table.output')
+  )
+  
+)
+ 
+)
+
+
+
+
+server <-function(input,output){# Combine the selected variables into a new data frame
+  
+
+  
+
+  
+  
+  #output$value <- renderPrint({
+  # str(input$GimmeCSV[2,2])
+  
+  output$table.output <- renderTable({
+    
+    inFile <- input$GimmeCSV
+    
+    tbl <- read.csv(inFile$datapath, header=TRUE, sep=",")
+    #return(head(tbl)) # undo Table can be modified 
+    
+    ################^ preview of csv table################
+    #look up how to extract the columns  with no name present(something numerical)
+    #After that is figured out calculating the rest of those values will be a snap
+    #tbl <- read.csv(inFile$datapath, header=TRUE, sep=",")
+    #below is temporary file path only used for testing purposes, the above read.csv is the true pooba
+    
+    #STANDARDS!!!
+    #tbl   <- read.csv(file.choose(), stringsAsFactors = TRUE, sep=",", header=TRUE, strip.white = TRUE)
+    solar <- tbl[,1]
+    temp  <- tbl[,2]
+    ws    <- tbl[,3]
+    
+  
+    #return(head(solar))
+    Ktemp <-temp + 273
+    ktemp <-temp + 273 
+    #lol
+    
+   
+    
+    Len <- (input$horzlength) #works!
+    #length of object
+    
+    
+    
+    r <-Len/2
+    
+    Height <- (input$vertlength) #height of object #works!
+   
+    
+    Width <- (input$widlength) #width of objectworks! 
+    
+    if (Len >=0.037){  # Absorptivity from Luke Miller 
+      Abs <- 0.615
+    } else {if (Len <= 0.02225 ){Abs <-0.689
+    } else Abs <- 0.68 } 
+     #works!
+  
+    Emm <-0.97
+    
+    #TOTALLY ARBITURARY SURFACE AREA VALUES BASED ON WHAT I KNOW!
+    ConeA <- (pi*r*r) + (sqrt((Height*Height)+(r*r))) # area of cone
+    
+    
+    SphereA <- (4*pi*(r*r)) #area of sphere
+    
+    PrismA <- ((2*Len*Width) + (2*Height*Len) +( 2*Height*Width))
+    
+    #return(PrismA) 
+    #WORKS
+    
+    #Deciding which surface area area to calculate
+  
+    if ((input$Shape) == shape_select[1]){
+      
+      SA <-ConeA
+    } else {if((input$Shape) == shape_select[2]){SA <- SphereA} 
+      else SA <-PrismA}
+    
+     
+  #WOEKS!!!!!!!
+    
+    #return(SA)
+    
+  #Temporary placeholder values for PSA
+    PSA <- SA
+    
+   SB <- 5.67E-08 # Stephan Boltzman constant
+   
+   eskyclear <- 0.72 + (0.005*temp)
+  
+   CC <- 0.5 #Cloud over 0 - 1
+   
+   esky <- eskyclear + CC*(1 - eskyclear - (8/ktemp)) #IR emissivity from sky
+   
+   Aradsky <- SA/2 #surface area projected to the sky
+   
+   Aradground <- SA/2 # surface area projected to the ground
+   
+   K3 <- esky^(1/4)
+   K2 <- 4 * SB * Emm * (esky)^(3/4)
+   K4 <- 4 * SB * Emm
+   K5 <- 0.6/(0.5*Len)
+   
+   hc <- 0.6
+   
+   
+   com1 <- (Abs * solar) + (K2 * (Aradsky/PSA) * K3 * Ktemp^4) + (K4 * (Aradground/PSA) * Ktemp^4) + (K5 * PSA * Ktemp) + (hc*SA*Ktemp) + 2.48*0
+   com2 <- (4180 * 0) + ((Ktemp^3) * K2 * (Aradsky/PSA)) + (K4 * (Aradground/PSA) *(Ktemp^3)) + (hc*SA) + (K5*PSA)
+   
+   #works!
+   
+   Sol <- com1 / com2
+   modeltemp <- Sol - 273
+   max <- max(modeltemp)
+   min <- min(modeltemp)
+   
+   
+   
+ 
+   
+  mydata <- data.frame( dailytemp = temp, solar = solar, bodytemp = modeltemp, hc = hc, stringsAsFactors = FALSE)
+   return(mydata)
+  
+  
+
+    
+    
+  })
+ 
+
+ 
+  
+  
+
+  
+  
+} #app goes here lol
+
+shinyApp(ui, server)
+}
