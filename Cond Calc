@@ -1,7 +1,7 @@
 rm(list = ls())
-library(shiny)
+library(devtools)
 install_github('shiny', 'rstudio')
-shape_select <-c("Cone","sphere","Prism")
+shape_select <-c("Cone","Sphere","Prism")
 #shape_select[1] <-how to select from this list
 
 #Take 1,2, or 3 from shape_select and then assign it a number value
@@ -14,33 +14,27 @@ ui <- fluidPage(pageWithSidebar(
               ),
     tags$hr(),
    
-    
-   
-    
-    
-    
     fluidRow(column(4, verbatimTextOutput("contents"))),
     selectInput('Shape', 'Shape', shape_select),
     
+    conditionalPanel(condition = "input.Shape == 'Cone'",
+                    numericInput("horzlength","horzlength",0, min = 1, max = 750),
+                    numericInput("vertlength","vertlength",0, min = 1, max = 750)
+                    ),
+    conditionalPanel(condition = "input.Shape == 'Sphere'",
+                     numericInput("horzlength","horzlength",0, min = 1, max = 750)),
+    conditionalPanel(condition = "input.Shape == 'Prism'",
+                     numericInput("horzlength","horzlength",0, min = 1, max = 750),
+                     numericInput("vertlength","vertlength",0, min = 1, max = 750),
+                     numericInput("widthlength","widthlength",0, min = 1, max = 750)
+                                         ),
     
+verbatimTextOutput("value"),
      
-   
-    
-    conditionalPanel(
-      
-      
-      condition ="input.Shape == 'sphere'",
-      numericInput("horzlength","horzlength",0, min = 1, max = 750),
-      verbatimTextOutput("value")
-      
-    ),
    
     #Assuming Size is going to the variable of choice here that will be modified
     # in the serve segment
-    numericInput("vertlength","vertlength",0, min = 1, max = 1000),
-    
-    numericInput("widlength","widlength",0,min = 1, max = 1000),
-    
+
     downloadButton('downloadData','Download')),
      
   
@@ -72,7 +66,7 @@ server <-function(input,output){# Combine the selected variables into a new data
     inFile <- input$GimmeCSV
     
     tbl <- read.csv(inFile$datapath, header=TRUE, sep=",")
-    return(head(tbl)) # undo Table can be modified 
+    #return(head(tbl)) # undo Table can be modified 
     
     ################^ preview of csv table################
     #look up how to extract the columns  with no name present(something numerical)
@@ -82,14 +76,14 @@ server <-function(input,output){# Combine the selected variables into a new data
     
     #STANDARDS!!!
     #tbl   <- read.csv(file.choose(), stringsAsFactors = TRUE, sep=",", header=TRUE, strip.white = TRUE)
-    solar <- tbl$solar
-    temp  <- tbl$temp
-    ws    <- tbl$ws
+    solar <- tbl[,1]
+    temp  <- tbl[,2]
+    ws    <- tbl[,3]
     
   
     #return(head(solar))
-    Ktemp <-temp - 273
-    ktemp <-temp - 273 
+    Ktemp <-temp + 273
+    ktemp <-temp + 273 
     #lol
     
    
@@ -140,7 +134,7 @@ server <-function(input,output){# Combine the selected variables into a new data
     
   #Temporary placeholder values for PSA
     PSA <- SA
-
+    
    SB <- 5.67E-08 # Stephan Boltzman constant
    
    eskyclear <- 0.72 + (0.005*temp)
@@ -175,8 +169,8 @@ server <-function(input,output){# Combine the selected variables into a new data
    
  
    
-  mydata <- data.frame( dailytemp = temp, solar = solar, bodytemp = modeltemp,  stringsAsFactors = FALSE)
- # return(mydata)
+  mydata <- data.frame( dailytemp = temp, solar = solar, bodytemp = modeltemp, hc = hc, stringsAsFactors = FALSE)
+   return(mydata)
   
   
 
